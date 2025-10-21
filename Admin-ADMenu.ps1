@@ -58,7 +58,6 @@ function New-LogonHoursBytes([hashtable]$Schedule) {
 function Get-LogonHoursPreset($name) {
     switch ($name.ToLower()) {
         '9-5-weekdays' {
-            # Mon(0)..Fri(4) allowed 09–17; Sat/Sun blocked
             $sched = @{}
             0..4 | ForEach-Object { $sched[$_] = @(@(9,17)) }
             return New-LogonHoursBytes $sched
@@ -91,15 +90,15 @@ function Action-CreateUser {
     if (-not (Confirm-Action "Create user $display ($sam) in $ou ?")) { return }
 
     $params = @{
-        Name               = $display
-        SamAccountName     = $sam
-        GivenName          = $given
-        Surname            = $sn
-        DisplayName        = $display
-        UserPrincipalName  = $upn
-        Path               = $ou
-        AccountPassword    = $pwd
-        Enabled            = $true
+        Name                  = $display
+        SamAccountName        = $sam
+        GivenName             = $given
+        Surname               = $sn
+        DisplayName           = $display
+        UserPrincipalName     = $upn
+        Path                  = $ou
+        AccountPassword       = $pwd
+        Enabled               = $true
         ChangePasswordAtLogon = $true
     }
     if ($dept) { $params['Department'] = $dept }
@@ -107,17 +106,17 @@ function Action-CreateUser {
     if ($WhatIf) { New-ADUser @params -WhatIf }
     else { New-ADUser @params }
 
-    Write-Host "User created."
+    Write-Host "User created." -ForegroundColor Green
 }
 
 function Action-RemoveUser {
     $id = Read-Host "User (sAMAccountName or UPN)"
     $u = Get-UserBySamOrUPN $id
-    if (-not $u) { Write-Host "Not found."; return }
+    if (-not $u) { Write-Host "Not found." -ForegroundColor Yellow; return }
     if (-not (Confirm-Action "Remove user $($u.SamAccountName)?")) { return }
     if ($WhatIf) { Remove-ADUser -Identity $u -Confirm:$false -WhatIf }
     else { Remove-ADUser -Identity $u -Confirm:$false }
-    Write-Host "User removed."
+    Write-Host "User removed." -ForegroundColor Green
 }
 
 function Action-ResetPassword {
@@ -128,7 +127,7 @@ function Action-ResetPassword {
     else { Set-ADAccountPassword -Identity $u -Reset -NewPassword $pwd }
     if ($WhatIf) { Set-ADUser -Identity $u -ChangePasswordAtLogon $true -WhatIf }
     else { Set-ADUser -Identity $u -ChangePasswordAtLogon $true }
-    Write-Host "Password reset and 'change at next logon' enabled."
+    Write-Host "Password reset and 'change at next logon' enabled." -ForegroundColor Green
 }
 
 function Action-UnlockUser {
@@ -136,7 +135,7 @@ function Action-UnlockUser {
     $u = Get-UserBySamOrUPN $id
     if ($WhatIf) { Unlock-ADAccount -Identity $u -WhatIf }
     else { Unlock-ADAccount -Identity $u }
-    Write-Host "Account unlocked."
+    Write-Host "Account unlocked." -ForegroundColor Green
 }
 
 function Action-CreateGroup {
@@ -148,7 +147,7 @@ function Action-CreateGroup {
     if ([string]::IsNullOrWhiteSpace($cat)) { $cat = 'Security' }
     if ($WhatIf) { New-ADGroup -Name $name -GroupScope $scope -GroupCategory $cat -Path $ou -WhatIf }
     else { New-ADGroup -Name $name -GroupScope $scope -GroupCategory $cat -Path $ou }
-    Write-Host "Group created."
+    Write-Host "Group created." -ForegroundColor Green
 }
 
 function Action-AddToGroup {
@@ -158,7 +157,7 @@ function Action-AddToGroup {
     $g = Get-GroupBySamOrCN $group
     if ($WhatIf) { Add-ADGroupMember -Identity $g -Members $u -WhatIf }
     else { Add-ADGroupMember -Identity $g -Members $u }
-    Write-Host "Added $($u.SamAccountName) to $($g.SamAccountName)."
+    Write-Host "Added $($u.SamAccountName) to $($g.SamAccountName)." -ForegroundColor Green
 }
 
 function Action-RemoveFromGroup {
@@ -168,17 +167,17 @@ function Action-RemoveFromGroup {
     $g = Get-GroupBySamOrCN $group
     if ($WhatIf) { Remove-ADGroupMember -Identity $g -Members $u -Confirm:$false -WhatIf }
     else { Remove-ADGroupMember -Identity $g -Members $u -Confirm:$false }
-    Write-Host "Removed $($u.SamAccountName) from $($g.SamAccountName)."
+    Write-Host "Removed $($u.SamAccountName) from $($g.SamAccountName)." -ForegroundColor Green
 }
 
 function Action-MoveToOU {
     $id = Read-Host "User or Computer sAMAccountName"
     $targetOU = Read-Host "Target OU distinguishedName"
     $obj = try { Get-ADUser -Identity $id -ErrorAction Stop } catch { Get-ADComputer -Identity $id -ErrorAction SilentlyContinue }
-    if (-not $obj) { Write-Host "Not found."; return }
+    if (-not $obj) { Write-Host "Not found." -ForegroundColor Yellow; return }
     if ($WhatIf) { Move-ADObject -Identity $obj.DistinguishedName -TargetPath $targetOU -WhatIf }
     else { Move-ADObject -Identity $obj.DistinguishedName -TargetPath $targetOU }
-    Write-Host "Moved $id to $targetOU."
+    Write-Host "Moved $id to $targetOU." -ForegroundColor Green
 }
 
 function Action-SetUserMetadata {
@@ -195,7 +194,7 @@ function Action-SetUserMetadata {
         $params['Manager'] = $m.DistinguishedName
     }
     if ($WhatIf) { Set-ADUser @params -WhatIf } else { Set-ADUser @params }
-    Write-Host "User attributes updated."
+    Write-Host "User attributes updated." -ForegroundColor Green
 }
 
 function Action-SetLoginHours {
@@ -207,7 +206,7 @@ function Action-SetLoginHours {
     $bytes = Get-LogonHoursPreset $name
     if ($WhatIf) { Set-ADUser -Identity $u -Replace @{logonHours=$bytes} -WhatIf }
     else { Set-ADUser -Identity $u -Replace @{logonHours=$bytes} }
-    Write-Host "Logon hours set: $name"
+    Write-Host "Logon hours set: $name" -ForegroundColor Green
 }
 
 function Action-SetFolderAccess {
@@ -222,21 +221,20 @@ function Action-SetFolderAccess {
     Write-Host "Rights: R=Read, M=Modify, F=FullControl; A=Add, D=Remove"
     $mode = Read-Host "Choose (e.g., A+M to add Modify, or D to remove all)"
     if ($mode -match '^d$') {
-        # Remove all explicit ACEs for that principal
         icacls "$path" /remove "$principal" | Out-Null
-        Write-Host "Removed explicit ACEs for $principal on $path"
+        Write-Host "Removed explicit ACEs for $principal on $path" -ForegroundColor Green
         return
     }
     $right = if ($mode -match 'f') {'(F)'} elseif ($mode -match 'm') {'(M)'} else {'(R)'}
     # (OI)(CI) = inherit to files and subfolders
     $rule = "${principal}:(OI)(CI)$right"
     icacls "$path" /grant "$rule" | Out-Null
-    Write-Host "Granted $right to $principal on $path (inheritable)."
+    Write-Host "Granted $right to $principal on $path (inheritable)." -ForegroundColor Green
 }
 
 function Action-NewGPOAndLink {
     if (-not (Get-Module -ListAvailable GroupPolicy)) {
-        Write-Host "GroupPolicy module not available. Skipping."
+        Write-Host "GroupPolicy module not available. Skipping." -ForegroundColor Yellow
         return
     }
     Import-Module GroupPolicy
@@ -245,13 +243,19 @@ function Action-NewGPOAndLink {
     $gpo = if ($WhatIf) { New-GPO -Name $name -WhatIf } else { New-GPO -Name $name }
     if ($WhatIf) { New-GPLink -Name $name -Target $ou -Enforced:$false -LinkEnabled:$true -WhatIf }
     else { New-GPLink -Name $name -Target $ou -Enforced:$false -LinkEnabled:$true }
-    Write-Host "Created GPO '$name' and linked to $ou."
-    Write-Host "Tip: use Set-GPRegistryValue to configure specific policies within this GPO."
+    Write-Host "Created GPO '$name' and linked to $ou." -ForegroundColor Green
+    Write-Host "Tip: use Set-GPRegistryValue to configure specific policies within this GPO." -ForegroundColor DarkGray
 }
 
 function Show-Menu {
+    Clear-Host
+    Write-Host "================ AD Administration Menu ================" -ForegroundColor Cyan
+    if ($WhatIf) {
+        Write-Host "Mode: SIMULATION (no changes made)" -ForegroundColor Yellow
+    } else {
+        Write-Host "Mode: LIVE (changes will be applied)" -ForegroundColor Red
+    }
 @"
-================ AD Administration Menu ================
 1) Create user
 2) Remove user
 3) Reset user password
@@ -266,39 +270,44 @@ function Show-Menu {
 12) Create + link a simple GPO to an OU
 0) Exit
 ========================================================
-WhatIf mode: $WhatIf
 "@
 }
 
 # --- Main ---
 try {
     Ensure-ADModule
-    while ($true) {
-        Clear-Host
+
+    do {
         Show-Menu
         $c = Read-Host "Choose an option"
+
         try {
             switch ($c) {
-                '1' { Action-CreateUser }
-                '2' { Action-RemoveUser }
-                '3' { Action-ResetPassword }
-                '4' { Action-UnlockUser }
-                '5' { Action-CreateGroup }
-                '6' { Action-AddToGroup }
-                '7' { Action-RemoveFromGroup }
-                '8' { Action-MoveToOU }
-                '9' { Action-SetUserMetadata }
+                '1'  { Action-CreateUser }
+                '2'  { Action-RemoveUser }
+                '3'  { Action-ResetPassword }
+                '4'  { Action-UnlockUser }
+                '5'  { Action-CreateGroup }
+                '6'  { Action-AddToGroup }
+                '7'  { Action-RemoveFromGroup }
+                '8'  { Action-MoveToOU }
+                '9'  { Action-SetUserMetadata }
                 '10' { Action-SetLoginHours }
                 '11' { Action-SetFolderAccess }
                 '12' { Action-NewGPOAndLink }
-                '0' { break }
-                default { Write-Host "Invalid choice." }
+                '0'  { }  # no-op; loop condition will end the program
+                default { Write-Host "Invalid choice." -ForegroundColor Yellow }
             }
         } catch {
             Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
         }
-        Pause-Enter
-    }
+
+        if ($c -ne '0') { Pause-Enter }
+    } while ($c -ne '0')
+
+    Write-Host "Exiting AD Administration Tool..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 1
+
 } catch {
     Write-Host "Fatal: $($_.Exception.Message)" -ForegroundColor Red
 }
